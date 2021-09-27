@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:voice_task/network/network_helper.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -19,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final recorder = Record();
   bool _play = false;
   bool _record = false;
+  File? file;
   String filePath = '/storage/emulated/0/Download/audio.m4a';
   TextEditingController cmnt = TextEditingController();
   Duration duration = const Duration();
@@ -29,6 +32,22 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     start();
     super.initState();
+  }
+
+//file upload methd
+  Future addnetwork(String cmt) async {
+    try {
+      file = File(filePath);
+      Map data = {
+        'file': file,
+        'comment': cmt,
+      };
+      NetworkHelper networkHelper = NetworkHelper(url: ''); //your url
+      await networkHelper.network(data);
+      delete();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // Check and request permission
