@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:voice_task/network/network_helper.dart';
 
 class VoiceFeedBack extends StatefulWidget {
   const VoiceFeedBack({Key? key}) : super(key: key);
@@ -51,6 +52,21 @@ class _VoiceFeedBackState extends State<VoiceFeedBack> {
     await Permission.microphone.request();
     await Permission.storage.request();
     await Permission.manageExternalStorage.request();
+  }
+
+  Future addnetwork(String cmt) async {
+    try {
+      file = File(filePath!);
+      Map data = {
+        'file': file,
+        'comment': cmt,
+      };
+      NetworkHelper networkHelper = NetworkHelper(url: ''); //your url
+      await networkHelper.network(data);
+      delete();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   //start record method
