@@ -1,29 +1,26 @@
-// Import package
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:record/record.dart';
 import 'dart:io';
+
 import 'package:assets_audio_player/assets_audio_player.dart';
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
-import 'package:voice_task/network/network_helper.dart';
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class VoiceFeedBack extends StatefulWidget {
+  const VoiceFeedBack({Key? key}) : super(key: key);
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  _VoiceFeedBackState createState() => _VoiceFeedBackState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  //variable declaration
+class _VoiceFeedBackState extends State<VoiceFeedBack> {
+  //voice command
   final recorder = Record();
   bool _play = false;
   bool _record = false;
   File? file;
-  String filePath = '/storage/emulated/0/Download/audio.m4a';
-  TextEditingController cmnt = TextEditingController();
+  String? filePath;
   Duration duration = const Duration();
   Duration position = const Duration();
   final audioPlayer = AssetsAudioPlayer();
@@ -32,24 +29,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     start();
     super.initState();
+    getStoragePath();
   }
 
-//file upload methd
-  Future addnetwork(String cmt) async {
-    try {
-      file = File(filePath);
-      Map data = {
-        'file': file,
-        'comment': cmt,
-      };
-      NetworkHelper networkHelper = NetworkHelper(url: ''); //your url
-      await networkHelper.network(data);
-      delete();
-    } catch (e) {
-      rethrow;
-    }
+  @override
+  void dispose() {
+    audioPlayer.dispose();
+
+    super.dispose();
   }
 
+  void getStoragePath() async {
+    Directory tempDir = await getTemporaryDirectory();
+    String tempPath = tempDir.path;
+    filePath = '$tempPath/audio.m4a';
+  }
+
+  //voice command
   // Check and request permission
   Future start() async {
     await Permission.microphone.request();
@@ -75,30 +71,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   //file delete method
   void delete() {
-    final dir = Directory(filePath);
+    final dir = Directory(filePath!);
     dir.deleteSync(recursive: true);
   }
 
   //audio play method
   Future<void> startPlaying() async {
-    audioPlayer.open(
-      Audio.file(filePath),
-      autoStart: true,
-      showNotification: true,
-    );
-    audioPlayer.current;
-    audioPlayer.current.listen((playingAudio) {
-      final songDuration = playingAudio!.audio.duration;
+    if (filePath == null) {
+      Fluttertoast.showToast(msg: "No file Here");
+    } else {
+      audioPlayer.open(
+        Audio.file(filePath!),
+        autoStart: true,
+        showNotification: true,
+      );
 
-      setState(() {
-        duration = songDuration;
+      audioPlayer.current.listen((playingAudio) {
+        final songDuration = playingAudio!.audio.duration;
+        setState(() {
+          duration = songDuration;
+        });
       });
-    });
-    audioPlayer.currentPosition.listen((event) {
-      setState(() {
-        position = event;
+      audioPlayer.currentPosition.listen((event) {
+        setState(() {
+          position = event.abs();
+        });
       });
-    });
+      audioPlayer.playlistAudioFinished.listen((event) {
+        setState(() {
+          _play = !_play;
+        });
+      });
+    }
   }
 
 //stop playing method
@@ -106,129 +110,138 @@ class _HomeScreenState extends State<HomeScreen> {
     audioPlayer.stop();
   }
 
+  //voice command
+
   @override
   Widget build(BuildContext context) {
-    double h = MediaQuery.of(context).size.height;
-    double w = MediaQuery.of(context).size.width;
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.delete),
-          onPressed: () {
-            delete();
-          }),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            SizedBox(
-              height: h / 12,
-              width: w / 1.2,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(3.0),
-                  child: Row(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height / 2,
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.02,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                     children: [
                       SizedBox(
-                        height: h / 15,
-                        width: w / 8,
-                        child: IconButton(
-                          iconSize: 30.0,
-                          onPressed: () {
-                            setState(() {
-                              _play = !_play;
-                            });
-                            if (_play) {
-                              startPlaying();
-                            }
+                        width: MediaQuery.of(context).size.width * 0.02,
+                      ),
+                      Material(
+                        elevation: 3,
+                        borderRadius: BorderRadius.circular(15),
+                        child: Container(
+                          height: MediaQuery.of(context).size.height * 0.06,
+                          width: MediaQuery.of(context).size.width * 0.75,
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              border:
+                                  Border.all(color: Colors.amber, width: 0.4),
+                              borderRadius: BorderRadius.circular(15)),
+                          child: Row(
+                            children: [
+                              Container(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.06,
+                                width: MediaQuery.of(context).size.width * 0.13,
+                                decoration: const BoxDecoration(
+                                    color: Colors.amber,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(15),
+                                      bottomLeft: Radius.circular(15),
+                                      topRight: Radius.circular(5),
+                                      bottomRight: Radius.circular(5),
+                                    )),
+                                child: IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _play = !_play;
+                                      });
+                                      if (_play) {
+                                        startPlaying();
+                                      }
 
-                            if (!_play) {
-                              stopPlaying();
-                            }
-                          },
-                          icon: _play == false
-                              ? const Icon(Icons.play_arrow)
-                              : const Icon(Icons.pause),
+                                      if (!_play) {
+                                        stopPlaying();
+                                      }
+                                    },
+                                    icon: _play == false
+                                        ? Icon(
+                                            Icons.play_arrow,
+                                            color: Colors.white,
+                                            size: MediaQuery.of(context)
+                                                    .size
+                                                    .height *
+                                                0.04,
+                                          )
+                                        : Icon(
+                                            Icons.pause,
+                                            color: Colors.white,
+                                            size: MediaQuery.of(context)
+                                                    .size
+                                                    .height *
+                                                0.04,
+                                          )),
+                              ),
+                              Slider.adaptive(
+                                  min: 00.0,
+                                  max: duration.inSeconds.toDouble(),
+                                  value: position.inSeconds.toDouble(),
+                                  onChanged: (double value) {
+                                    setState(() {
+                                      value = position.inSeconds.toDouble();
+                                    });
+                                  })
+                            ],
+                          ),
                         ),
                       ),
-                      Slider.adaptive(
-                          min: 00.0,
-                          max: duration.inSeconds.toDouble(),
-                          value: position.inSeconds.toDouble(),
-                          onChanged: (double value) {
-                            setState(() {
-                              value = position.inSeconds.toDouble();
-                            });
-                          })
                     ],
                   ),
-                ),
-              ),
-            ),
-            // GestureDetector(
-            //   onLongPress: () {
-            //     setState(() {
-            //       _record = !_record;
-            //     });
-            //     startRecord();
-            //   },
-            //   // onLongPressUp: () {
-            //   //   setState(() {
-            //   //     _record = !_record;
-            //   //   });
-            //   //   stopRecord();
-            //   // },
-            //   child: Container(
-            //     height: h / 15,
-            //     width: w / 8,
-            //     decoration: BoxDecoration(
-            //         color: Colors.amber,
-            //         borderRadius: BorderRadius.circular(4)),
-            //     child: _record == false
-            //         ? const Icon(Icons.mic)
-            //         : const Icon(Icons.pause),
-            //   ),
-            // ),
-            Container(
-              height: h / 15,
-              width: w / 8,
-              decoration: BoxDecoration(
-                  color: Colors.amber,
-                  borderRadius: BorderRadius.circular(40.0)),
-              child: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _record = !_record;
-                  });
-                  _record == true ? startRecord() : stopRecord();
-                },
-                icon: _record == false
-                    ? const Icon(Icons.mic)
-                    : const Icon(Icons.pause),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-
-            TextField(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter your comment',
-              ),
-              controller: cmnt,
-            ),
-            SizedBox(
-              width: double.maxFinite,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: ElevatedButton.icon(
-                    onPressed: () {},
-                    //=> addnetwork(cmnt.text),
-                    icon: const Icon(Icons.upload),
-                    label: const Text('upload')),
-              ),
-            ),
-          ],
+                  Row(
+                    children: [
+                      Material(
+                        elevation: 5,
+                        borderRadius: BorderRadius.circular(50),
+                        child: Container(
+                          height: MediaQuery.of(context).size.height * 0.07,
+                          width: MediaQuery.of(context).size.width * 0.14,
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _record = !_record;
+                                });
+                                _record == true ? startRecord() : stopRecord();
+                              },
+                              icon: _record == false
+                                  ? const Icon(
+                                      Icons.keyboard_voice,
+                                      color: Colors.white,
+                                    )
+                                  : const Icon(
+                                      Icons.pause,
+                                      color: Colors.white,
+                                    )),
+                        ),
+                      ),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.03,
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
       ),
     );
